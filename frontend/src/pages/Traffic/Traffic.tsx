@@ -25,9 +25,10 @@ import DateRangeSelector from "../../components/DateRangeSelector/DateRangeSelec
 import {trafficColumns} from "./columns.ts";
 import { useSort } from "../../utils/hooks/useSort.tsx";
 import getValueByPath from "../../utils/getValueByPath.ts";
-import {round, safeAvg, safePercentage} from "../../utils/math.ts";
+import {round, safeAvg, safePercentage, getPriceFact, getPriceMax, getMinus} from "../../utils/math.ts";
 import {toggleValue} from "../../utils/toggleValue.ts";
 import usePersistToLocalStorage from "../../utils/hooks/usePersistToLocalStorage.tsx";
+import FactMaxIndicator from "./TrafficRow/FactMaxIndicator.tsx";
 
 const Traffic = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -161,7 +162,7 @@ const Traffic = () => {
       selectedStatuses.includes(row.status) &&
       (
         Array.isArray(row.marks)
-          ? row.marks.every(m => selectedMarks.includes(m.symbol))
+          ? row.marks.every((m: { symbol: string }) => selectedMarks.includes(m.symbol))
           : false
       )
     );
@@ -190,17 +191,26 @@ const Traffic = () => {
         if (row.first.usd_median > 0) {
           acc.usd_median_count += 1
         }
+
+        const rowPriceFact = getPriceFact(row.first.spend, row.first.approves_count);
+        const rowPriceMax = getPriceMax(row.first.usd_median);
+        acc.minus += getMinus(row.first.spend, row.first.approves_count, rowPriceFact, rowPriceMax);
+
         return acc;
       },
       {
         all_count: 0, clean_count: 0, approves_count: 0, trash_count: 0, approves_sum: 0, unprocessed_count: 0, preorder_count: 0,
         completed_count: 0, link_clicks: 0, spend: 0, conversion: 0, campaigns: 0, usd_median: 0,
-        cr_percentage: 0, cr_percentage_count: 0
+        cr_percentage: 0, cr_percentage_count: 0, minus: 0
       }
     );
 
     const approves_percentage = safePercentage(result.approves_count, result.all_count);
     const approves_median = safeAvg(result.approves_sum, result.approves_count);
+    const spend = round(result.spend);
+    const usd_median = round(approves_median * 1000 * exchangeRate);
+    const price_fact = getPriceFact(spend, result.approves_count);
+    const price_max = getPriceMax(usd_median);
 
     return {
       ...result,
@@ -211,9 +221,12 @@ const Traffic = () => {
       preorder_percentage: safePercentage(result.preorder_count, result.all_count),
       completed_percentage: safePercentage(result.completed_count, result.approves_count),
       cr_percentage: safeAvg(result.cr_percentage, result.cr_percentage_count),
-      usd_median: round(approves_median * 1000 * exchangeRate),
-      spend: round(result.spend),
+      usd_median,
+      spend,
       lead_price: result.conversion > 0 ? round(result.spend / result.conversion) : 0,
+      price_fact,
+      price_max,
+      minus: round(result.minus),
     };
   }, [displayedData]);
 
@@ -381,7 +394,7 @@ const Traffic = () => {
                       <TableCell
                         key={col.key}
                         onClick={isSortable ? () => handleSort(col.key) : undefined}
-                        align={col.align}
+                        align={col.align as "left" | "right" | "center"}
                         sx={{
                           backgroundColor: col.color,
                           position: col.fixed ? "sticky" : "static",
@@ -478,6 +491,16 @@ const Traffic = () => {
                   {visibleColumns.includes("first.lead_price") && <TableCell>{summary.lead_price}$</TableCell>}
                   {visibleColumns.includes("campaigns") && <TableCell>{summary.campaigns}</TableCell>}
                   {visibleColumns.includes("first.usd_median") && <TableCell align="right">{summary.usd_median}$</TableCell>}
+                  {visibleColumns.includes("first.price_fact_max") && (
+                    <TableCell>
+                      <FactMaxIndicator priceFact={summary.price_fact} priceMax={summary.price_max} />
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("first.minus") && (
+                    <TableCell sx={{ backgroundColor: summary.minus < 0 ? "#ffe7e7" : undefined }}>
+                      {summary.minus < 0 ? `${summary.minus.toFixed(2)}$` : "0"}
+                    </TableCell>
+                  )}
                 </TableRow>
               </TableFooter>
             </Table>
