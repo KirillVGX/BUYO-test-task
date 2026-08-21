@@ -13,24 +13,24 @@ const isFiniteNumber = (val: unknown): val is number => typeof val === "number" 
 export const PRICE_MAX_RATE = 0.25;
 
 export const getPriceFact = (spend: number, approves: number) =>
-  isFiniteNumber(spend) && isFiniteNumber(approves) && approves > 0 ? round(spend / approves) : 0;
+  isFiniteNumber(spend) && isFiniteNumber(approves) && approves > 0 ? spend / approves : 0;
 
 export const getPriceMax = (avgCheckUsd: number) =>
-  isFiniteNumber(avgCheckUsd) && avgCheckUsd > 0 ? round(avgCheckUsd * PRICE_MAX_RATE) : 0;
+  isFiniteNumber(avgCheckUsd) && avgCheckUsd > 0 ? avgCheckUsd * PRICE_MAX_RATE : 0;
 
 export const getMinus = (spend: number, approves: number, priceFact: number, priceMax: number) => {
   const safeSpend = isFiniteNumber(spend) ? spend : 0;
   const safeApproves = isFiniteNumber(approves) ? approves : 0;
 
   if (safeApproves <= 0) {
-    return safeSpend > 0 ? round(-safeSpend) : 0;
+    return safeSpend > 0 ? -safeSpend : 0;
   }
 
   if (!isFiniteNumber(priceFact) || !isFiniteNumber(priceMax) || priceFact <= priceMax) {
     return 0;
   }
 
-  return round((priceMax - priceFact) * safeApproves);
+  return (priceMax - priceFact) * safeApproves;
 };
 
 export const getFactMaxRatio = (priceFact: number, priceMax: number) => {
