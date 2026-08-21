@@ -1,7 +1,8 @@
 import { memo, useCallback } from "react";
 import {TableRow, TableCell, Tooltip, Checkbox, Stack} from "@mui/material";
 import TagsCell from "../../../components/TagsCell/TagsCell.tsx";
-import {renderCRThreeFixed, renderThree, renderThreeFixed} from "../../../utils/math.ts";
+import {renderCRThreeFixed, renderThree, renderThreeFixed, getPriceFact, getPriceMax, getMinus} from "../../../utils/math.ts";
+import FactMaxIndicator from "./FactMaxIndicator.tsx";
 
 const TrafficRow = ({
   id,
@@ -23,8 +24,12 @@ const TrafficRow = ({
   onToggleRow: (row: any) => void;
 }) => {
   const monthMinusColor = row.with_month_minus ? "red" : "default"
-  const bg = (color: "selected" | "red" | "green" | "blue" | "purple" | "default" = "default") =>  isSelected ? "selected" : (isWhiteRow && color !== "red") ? "white" : color;
+  const bg = (color: "selected" | "red" | "green" | "blue" | "purple" | "orange" | "default" = "default") =>  isSelected ? "selected" : (isWhiteRow && color !== "red") ? "white" : color;
   const handleChange = useCallback(() => onToggleRow(id), [onToggleRow, id]);
+
+  const priceFact = getPriceFact(row.first.spend, row.first.approves_count);
+  const priceMax = getPriceMax(row.first.usd_median);
+  const minus = getMinus(row.first.spend, row.first.approves_count, priceFact, priceMax);
 
   return (
     <TableRow className={isWhiteRow ? "whiteRow" : "defaultRow"}>
@@ -111,6 +116,16 @@ const TrafficRow = ({
       {visibleColumns.includes("first.lead_price") && <TableCell className={bg("blue")}>{renderThreeFixed(row.first.lead_price, row.second.lead_price, row.third?.lead_price, "$")}</TableCell>}
       {visibleColumns.includes("campaigns") && <TableCell className={bg("blue")}>{row.campaigns}</TableCell>}
       {visibleColumns.includes("first.usd_median") && <TableCell align="right" className={bg("purple")}>{row.first.usd_median.toFixed(2)}$</TableCell>}
+      {visibleColumns.includes("first.price_fact_max") && (
+        <TableCell className={bg("purple")}>
+          <FactMaxIndicator priceFact={priceFact} priceMax={priceMax} />
+        </TableCell>
+      )}
+      {visibleColumns.includes("first.minus") && (
+        <TableCell className={bg(minus < 0 ? "red" : "default")}>
+          {minus < 0 ? `${minus.toFixed(2)}$` : "0"}
+        </TableCell>
+      )}
     </TableRow>
   );
 };
